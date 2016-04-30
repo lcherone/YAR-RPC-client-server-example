@@ -1,0 +1,8 @@
+{
+    "config": {
+        "optimize-autoloader": true
+    },
+    "require": {
+        "gabordemooij/redbean": "dev-master"
+    }
+}

@@ -1,9 +1,9 @@
 PHP RPC Client/Server Example
 ---
-**Author:** 
-@lcherone
+**Author:** @lcherone
 
 **What does it do? (For the sake of testing out the extension)**
+
 A very simple few-lines RPC endpoint and client which runs CRUD operations on a `/tmp` database.
 
 **Uses** 
@@ -23,5 +23,5 @@ Then create a new extension apache config file for `yar.so`
 Restart apache...
 
 **IMO**
-[Plinker](https://bitbucket.org/plinker/example) is better, way more secure, namespaced and code accessible, 100% PHP so no extension required and does the same thing and more.
 
+[Plinker](https://bitbucket.org/plinker/example) is better, way more secure, namespaced and code accessible, 100% PHP so no extension required and does the same thing and more.

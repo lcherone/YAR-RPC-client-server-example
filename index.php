@@ -44,7 +44,7 @@ function get_machine_id() {
         return $ip;
     }
 
-try {
+//try {
 	
 	$host = new yar_client("http://api.oss.tools/hosts.php");
 
@@ -200,6 +200,16 @@ try {
 					$_SESSION['host'] = $row;
 					exit(header('Location: ./index.php'));
 				} break;
+				
+				/**
+				 * 
+				 */
+				case "delete_server":  {
+					$id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
+					$host->delete('nodes', (int) $id);
+					
+					exit(header('Location: ./index.php'));
+				} break;
 			}
 		}
 	}
@@ -207,9 +217,9 @@ try {
 	$nodes = $host->findAll('nodes');
 
 	$error = '';
-} catch (Exception $e) {
-	$error = '<span style="color:red;font-weight:bold">Oops! '.$e->getMessage().'</span>';
-}
+//} catch (Exception $e) {
+//	$error = '<span style="color:red;font-weight:bold">Oops! '.$e->getMessage().'</span>';
+//}
 
 //print_r($_SESSION);
 
@@ -331,6 +341,7 @@ try {
 									<td><?= htmlentities($row['added']) ?></td>
 									<td><?= htmlentities($row['updated']) ?></td>
 									<td>
+										<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>">Delete</a>
 										<a href="/?do=connect&id=<?= (int) $row['id'] ?>">Connect</a>
 									</td>
 								</tr>

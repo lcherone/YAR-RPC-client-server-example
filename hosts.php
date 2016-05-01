@@ -8,21 +8,45 @@ require('vendor/autoload.php');
 
 use RedBeanPHP\R;
 
-class Database {
+class Hosts {
 
 	public function __construct()
 	{
-		R::setup('sqlite:/tmp/database1.db');
+		R::setup('sqlite:/tmp/hosts1.db');
+		
 		R::ext('xdispense', function($type) { 
 		  return R::getRedBean()->dispense($type); 
 		});
 	}
+	
+	public function get_machine_id()
+    {
+        if (file_exists('./machine-id')) {
+            return file_get_contents('./machine-id');
+        }
+
+        if (file_exists('/var/lib/dbus/machine-id')) {
+            $id = trim(`cat /var/lib/dbus/machine-id`);
+            file_put_contents('./machine-id', $id);
+            return $id;
+        }
+
+        if (file_exists('/etc/machine-id')) {
+            $id = trim(`cat /etc/machine-id`);
+            file_put_contents('./machine-id', $id);
+            return $id;
+        }
+
+        $id = sha1(uniqid(true));
+        file_put_contents('./machine-id', $id);
+        return $id;
+    }
 
 	/**
      * Inspect table
      * 
      * @usage: 
-     *  $client = new yar_client("http://example.com/server.php");
+     *  $client = new yar_client("http://example.com/hosts.php");
      *  $client->inspect();
      *
      * @param string $table
@@ -197,7 +221,7 @@ class Database {
      * @link http://www.redbeanphp.com/index.php?p=/finding#find_one
      * @param array $params
      */
-	public function findOne($table, $query = [], $params = [])
+	public function findOne($table, $query = '', $params = [])
 	{
 		if (!empty($query) && !empty($params)) {
 			$result = R::findOne($table, $query, $params);
@@ -224,19 +248,6 @@ class Database {
 		return R::exportAll($result);
 	}
 
-	/**
-     * Find Or Create
-     *
-     * json $plink->findOrCreate(string, array, string);
-     *
-     * @link http://www.redbeanphp.com/index.php?p=/finding#find_create
-     * @param array $params
-     */
-	public function findOrCreate($table, $query = [], $params = [])
-	{
-		$result = R::findOrCreate($table, $query);
-		return R::exportAll($result);
-	}
 	
 	/**
      * Load
@@ -335,5 +346,5 @@ class Database {
 
 }
 
-$server = new Yar_Server(new Database());
+$server = new Yar_Server(new Hosts());
 $server->handle();

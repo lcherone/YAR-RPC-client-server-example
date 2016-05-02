@@ -4,52 +4,51 @@ ini_set('display_errors', '1');
 
 session_start();
 
-$table  = 'contacts';
+$table  = 'default';
 $vars = [];
 
 function get_machine_id() {
-        if (file_exists('./machine-id')) {
-            return file_get_contents('./machine-id');
-        }
+	if (file_exists('./machine-id')) {
+		return file_get_contents('./machine-id');
+	}
+	if (file_exists('/var/lib/dbus/machine-id')) {
+		$id = trim(`cat /var/lib/dbus/machine-id`);
+		file_put_contents('./machine-id', $id);
+		return $id;
+	}
+	if (file_exists('/etc/machine-id')) {
+		$id = trim(`cat /etc/machine-id`);
+		file_put_contents('./machine-id', $id);
+		return $id;
+	}
+	$id = sha1(uniqid(true));
+	file_put_contents('./machine-id', $id);
+	return $id;
+}
 
-        if (file_exists('/var/lib/dbus/machine-id')) {
-            $id = trim(`cat /var/lib/dbus/machine-id`);
-            file_put_contents('./machine-id', $id);
-            return $id;
-        }
+/**
+ * Attempts to get originating IP address of user,
+ * Spoofable, but in future we may want to use load balancing.
+ */
+function getIPAddress() {
+	if (!empty($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+		$ip = $_SERVER['HTTP_CLIENT_IP'];
+	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+		$ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+	} else {
+		$ip = $_SERVER['REMOTE_ADDR'];
+	}
+	return $ip;
+}
 
-        if (file_exists('/etc/machine-id')) {
-            $id = trim(`cat /etc/machine-id`);
-            file_put_contents('./machine-id', $id);
-            return $id;
-        }
-
-        $id = sha1(uniqid(true));
-        file_put_contents('./machine-id', $id);
-        return $id;
-   }
-   /**
-     * Attempts to get originating IP address of user,
-     * Spoofable, but in future we may want to use load balancing.
-     */
-     function getIPAddress()
-    {
-        if (!empty($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $ip = $_SERVER['HTTP_CLIENT_IP'];
-        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-            $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-        } else {
-            $ip = $_SERVER['REMOTE_ADDR'];
-        }
-        return $ip;
-    }
-
-//try {
+try {
 	
 	$host = new yar_client("http://api.oss.tools/hosts.php");
 
+	$nodes = $host->findAll('nodes');
 	//find self
 	$peer = $host->findAll('nodes', 'machine_id = ?', [get_machine_id()]);
+	
 
 	// else add self to network
 	if (empty($peer)) {
@@ -65,15 +64,23 @@ function get_machine_id() {
 		exit(header('Location: ./index.php'));
 	}
 	
-	if (empty($_SESSION['host'])) {
-		//default host
-		$_SESSION['host'] = ['hostname' => 'api.oss.tools'];
+	// if (empty($_SESSION['host'])) {
+	// 	//default host
+	// 	$_SESSION['host'] = [
+	// 		'machine_id' => get_machine_id(),
+	// 		'ip' => $_SERVER['SERVER_ADDR'],
+	// 		'hostname' => $_SERVER['HTTP_HOST'],
+	// 		'added' => date_create()->format('Y-m-d h:i:s'),
+	// 		'updated' => date_create()->format('Y-m-d h:i:s'),
+	// 	];
+	// }
+	
+	if (!empty($_SESSION['host'])) {
+		$api = new yar_client('http://'.$_SESSION['host']['hostname'].'/server.php');
+	
+		//get all tables
+		$tables = $api->inspect();
 	}
-
-	$api = new yar_client('http://'.$_SESSION['host']['hostname']."/server.php");
-
-	//get all tables
-	$tables = $api->inspect();
 
 	if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 		if (in_array('action', array_keys($_POST))) {
@@ -89,7 +96,7 @@ function get_machine_id() {
 				case "create": {
 					if (isset($_POST['column']) && is_array($_POST['column'])) {
 						
-						$table = (!empty($_POST['table']) ? preg_replace("/[^a-z_]/", '', str_replace(' ', '_', $_POST['table'])) : $table);
+						$table = (!empty($_POST['table']) ? preg_replace("/[^a-z_]/", '', strtolower(str_replace(' ', '_', $_POST['table']))) : $table);
 						
 						if (empty($table)) {
 							$error = 'After removing invalid chars, it seems your table name is invalid';
@@ -112,6 +119,7 @@ function get_machine_id() {
 					$api->create(
 						strtolower($table), $_POST
 					);
+					exit(header('Location: /'));
 				} break;
 
 				/**
@@ -122,6 +130,7 @@ function get_machine_id() {
 					$_POST['updated'] = date_create()->format('Y-m-d h:i:s');
 					
 					$api->update(strtolower($table), (int) $id, $_POST);
+					exit(header('Location: /'));
 				} break;    
 			}
 		}
@@ -136,46 +145,41 @@ function get_machine_id() {
 					$action = filter_input(INPUT_GET, 'action', FILTER_SANITIZE_STRING);
 					$table = filter_input(INPUT_GET, 'table', FILTER_SANITIZE_STRING);
 					$id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
-					
+					$columns = $api->inspect($table);
+
 					$row = [];
 					if ($action == 'update' && !empty($id)) {
 						$row = $api->load($table, (int) $id);
 					}
 
 					if ($action == 'create' || $action == 'update') { ?>
-<div class="modal-content">
-	<div class="modal-header">
-		<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-		<h4 class="modal-title"><?= (!empty($row['id']) ? 'Update' : 'Create') ?> Contact</h4>
-	</div>
-	<div class="modal-body clearfix">
-		<div class="col-xs-12">
-			<form role="form" name="create-form" id="create-form" action="" method="POST" class="form-horizontal">
-				<input type="hidden" name="action" value="<?= $action ?>">
-				<input type="hidden" name="table" value="<?= $table ?>">
-				<?= (!empty($row['id']) ? '<input type="hidden" name="id" value="'.$row['id'].'">' : null) ?>
-				<div class="form-group">
-					<label for="name" class="control-label">Name</label>
-					<input type="text" class="form-control" name="name" id="name" value="<?= (!empty($row['name']) ? htmlentities($row['name']) : null) ?>" placeholder="enter name">
-				</div>
-				<div class="form-group">
-					<label for="phone" class="control-label">Phone</label>
-					<input type="text" class="form-control" name="phone" id="phone" value="<?= (!empty($row['phone']) ? htmlentities($row['phone']) : null) ?>" placeholder="enter phone">
-				</div>
-				<div class="form-group">
-					<label for="email" class="control-label">Email</label>
-					<input type="email" class="form-control" name="email" id="email" value="<?= (!empty($row['email']) ? htmlentities($row['email']) : null) ?>" placeholder="enter email">
-				</div>
-				<div class="row modal-footer">
-					<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-					<button type="submit" class="btn btn-primary">Save</button>
-				</div>
-			</form>
-		</div>
-	</div>
-</div>
-<?php }
-
+						<div class="modal-content">
+							<div class="modal-header">
+								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+								<h4 class="modal-title"><?= (!empty($row['id']) ? 'Update' : 'Create') ?> <?= $table ?> entry</h4>
+							</div>
+							<div class="modal-body clearfix">
+								<div class="col-xs-12">
+									<form role="form" name="create-form" id="create-form" action="" method="POST" class="form-horizontal">
+										<input type="hidden" name="action" value="<?= $action ?>">
+										<input type="hidden" name="table" value="<?= $table ?>">
+										<?= (!empty($row['id']) ? '<input type="hidden" name="id" value="'.$row['id'].'">' : null) ?>
+										<?php foreach ($columns as $column => $type): if (in_array($column, ['id', 'updated', 'added'])) continue; ?>
+										<div class="form-group">
+											<label for="_<?= $column ?>" class="control-label"><?= ucfirst(str_replace('_', ' ', $column)) ?></label>
+											<input type="text" class="form-control" name="<?= $column ?>" id="_<?= $column ?>" value="<?= (!empty($row[$column]) ? htmlentities($row[$column]) : null) ?>" placeholder="Enter <?= strtolower(str_replace('_', ' ', $column)) ?>..."/>
+										</div>
+										<?php endforeach ?>
+										<div class="row modal-footer">
+											<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+											<button type="submit" class="btn btn-primary">Save</button>
+										</div>
+									</form>
+								</div>
+							</div>
+						</div>
+						<?php
+					}
 					exit;
 				} break;
 				
@@ -198,7 +202,15 @@ function get_machine_id() {
 					$row = $host->load('nodes', (int) $id);
 					
 					$_SESSION['host'] = $row;
-					exit(header('Location: ./index.php'));
+					exit(header('Location: /'));
+				} break;				
+				
+				/**
+				 * 
+				 */
+				case "disconnect":  {
+					$_SESSION['host'] = [];
+					exit(header('Location: /'));
 				} break;
 				
 				/**
@@ -208,18 +220,57 @@ function get_machine_id() {
 					$id = filter_input(INPUT_GET, 'id', FILTER_SANITIZE_NUMBER_INT);
 					$host->delete('nodes', (int) $id);
 					
-					exit(header('Location: ./index.php'));
+					exit(header('Location: /'));
+				} break;
+				
+				/**
+				 * 
+				 */
+				case "delete_column":  {
+					$table = filter_input(INPUT_GET, 'table', FILTER_SANITIZE_STRING);
+					$column = filter_input(INPUT_GET, 'column', FILTER_SANITIZE_STRING);
+					
+					//make safe
+					$table = preg_replace("/[^a-z_]/", '', strtolower(str_replace(' ', '_', $table)));
+					$column = preg_replace("/[^a-z_]/", '', strtolower(str_replace(' ', '_', $column)));
+					
+					//workaround no drop column in sqlite
+					$tmp = $api->findAll($table);
+
+					$api->exec('DROP TABLE `'.$table.'`');
+					
+					foreach ($tmp as $row) {
+						unset($row['id']);
+						unset($row[$column]);
+						$api->create(
+							$table, $row
+						);
+					}
+
+					exit(header('Location: /'));
+				} break;
+				
+				/**
+				 * 
+				 */
+				case "delete_table":  {
+					$table = filter_input(INPUT_GET, 'table', FILTER_SANITIZE_STRING);
+
+					//make safe
+					$table = preg_replace("/[^a-z_]/", '', strtolower(str_replace(' ', '_', $table)));
+
+					$api->exec('DROP TABLE `'.$table.'`');
+
+					exit(header('Location: /'));
 				} break;
 			}
 		}
 	}
 
-	$nodes = $host->findAll('nodes');
-
 	$error = '';
-//} catch (Exception $e) {
-//	$error = '<span style="color:red;font-weight:bold">Oops! '.$e->getMessage().'</span>';
-//}
+} catch (Exception $e) {
+	$error = '<span style="color:red;font-weight:bold">Oops! '.$e->getMessage().'</span>';
+}
 
 //print_r($_SESSION);
 
@@ -289,15 +340,15 @@ function get_machine_id() {
 			}
 			
 			.tab-content {
-			    border-left: 1px solid #ddd;
-			    border-right: 1px solid #ddd;
-			    border-bottom: 1px solid #ddd;
-			    padding: 10px;
-			    background:#fff
+				border-left: 1px solid #ddd;
+				border-right: 1px solid #ddd;
+				border-bottom: 1px solid #ddd;
+				padding: 10px;
+				background:#fff
 			}
 			
 			.nav-tabs {
-			    margin-bottom: 0;
+				margin-bottom: 0;
 			}
 		</style>
 
@@ -310,16 +361,18 @@ function get_machine_id() {
 	</head>
 
 	<body>
-		<h1>Yar Server: Client (Example contacts directory) <small class="pull-right" style="color:white;margin:8px 15px"><b>Connected to:</b> <?= $_SESSION['host']['machine_id'] ?> (<?= $_SESSION['host']['ip'] ?>)</small></h1>
+		<h1>Yar Client <?php if (!empty($_SESSION['host']['machine_id'])): ?><small class="pull-right" style="margin-top:7px;margin-right:7px;"><a href="http://<?= $_SESSION['host']['hostname'] ?>/server.php"><span style="color:#e7e7e7;"><?= $_SESSION['host']['machine_id'] ?></span></a></small><?php endif ?></h1>
 
 		<div class="container">
 			<div class="row">
 				<div class="col-xs-12">
 					<?= $error ?>
 					<h2>
-						Servers
+						Servers List
 					</h2>
-					<p class="api-info">Servers are announced instances of this script which are running on different hosts. This client announces and connects to the base host <a href="http://api.oss.tools">http://api.oss.tools</a>, then in turn you recive the following server list. Simply click to connect to another host.</p>
+					<p class="api-info">
+						Servers are instances of this script, each with there own database. To add a server or for more information about this sunday project <a href="https://bitbucket.org/lcherone/yar-rpc-client-server-example" target="_blank">click here</a>.
+					</p>
 					<div class="col-md-12">
 						<table class="table table-striped table-hover">
 							<thead>
@@ -335,14 +388,18 @@ function get_machine_id() {
 							<tbody>
 								<?php foreach ($nodes as $row): ?>
 								<tr>
-									<td><a href="#ajax-modal" data-url="/?do=modal&action=update&table=peers&id=<?= (int) $row['id'] ?>" data-size="modal-md" class="ajax-model" data-toggle="modal"><?= htmlentities($row['machine_id']) ?></a></td>
+									<!--<td><a href="#ajax-modal" data-url="/?do=modal&action=update&table=peers&id=<?= (int) $row['id'] ?>" data-size="modal-md" class="ajax-model" data-toggle="modal"><?= htmlentities($row['machine_id']) ?></a></td>-->
+									<td><?= htmlentities($row['machine_id']) ?></td>
 									<td><?= htmlentities($row['ip']) ?></td>
 									<td><?= htmlentities($row['hostname']) ?></td>
 									<td><?= htmlentities($row['added']) ?></td>
 									<td><?= htmlentities($row['updated']) ?></td>
 									<td>
-										<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>">Delete</a>
-										<a href="/?do=connect&id=<?= (int) $row['id'] ?>">Connect</a>
+										<div class="btn-group btn-group-xs">
+											<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>" class="btn btn-danger">Delete</a>
+											<a href="/?do=connect&id=<?= (int) $row['id'] ?>" class="btn btn-success">Connect</a>
+											<a href="/?do=disconnect&id=<?= (int) $row['id'] ?>" class="btn btn-warning">Disconnect</a>
+										</div>
 									</td>
 								</tr>
 								<?php endforeach ?>
@@ -350,21 +407,32 @@ function get_machine_id() {
 						</table>
 					</div>
 				</div>			
-
+				<?php if (!empty($_SESSION['host'])): ?>
 				<div class="col-xs-12">
 					<?= $error ?>
+					<h2>
+						Tables
+					</h2>
+					<p class="api-info">
+						The following data is stored and retrieved from 
+						<code><a href="http://<?= $_SESSION['host']['hostname'] ?>/server.php"><?= $_SESSION['host']['hostname'] ?></a> (<?= $_SESSION['host']['ip'] ?>)</code> through 
+						<code><a href="http://<?= $peer[0]['hostname'] ?>/server.php"><?= $peer[0]['hostname'] ?></a> (<?= $peer[0]['ip'] ?>)</code> 
+						using the RPC <a href="http://php.net/manual/en/class.yar-client.php" target="_blank"><code>Yar_Client</code></a>.
+					</p>
 					<div class="col-xs-12">
-
 						<ul class="nav nav-tabs" id="myTab">
 							<?php $i=0; foreach ($tables as $table): ?>
-						    <li class="<?= (($i == 0) ? ' active' : null) ?>"><a data-target="#tab-<?= $table ?>" data-toggle="tab"><?= str_replace('_', ' ', ucfirst($table)) ?></a></li>
-						  	<?php $i++; endforeach ?>
-						  	<li class="pull-right"><a data-target="#tab-new-table" data-toggle="tab">New</a></li>
+							<li class="<?= (($i == 0) ? ' active' : null) ?>">
+								<a data-target="#tab-<?= $table ?>" data-toggle="tab">
+									<?= str_replace('_', ' ', ucfirst($table)) ?> <span onclick="window.location.href = '?do=delete_table&table=<?= $table ?>'" style="cursor:pointer"><i class="fa fa-times text-danger"></i></a></span>
+								</a>
+							</li>
+							<?php $i++; endforeach ?>
+							<li class="pull-right"><a data-target="#tab-new-table" data-toggle="tab"><i class="fa fa-plus text-success"></i> Add Table</a></li>
 						</ul>
-		
 						<div class="tab-content">
 							<?php if (empty($tables)): ?>
-							<p>There are currently no tables on this host. To add a table click here!</p>
+							<p>There are currently no data on this server.</p>
 							<?php endif ?>
 							
 							<div class="tab-pane" id="tab-new-table">
@@ -372,13 +440,12 @@ function get_machine_id() {
 									<input type="hidden" name="action" value="create">
 									<input type="hidden" name="table" value="<?= $table ?>">
 									<div class="form-group">
-										<label for="table" class="control-label">Table Name <small>(<span class="text-danger">All but a-z is stripped.</span>)</small></label>
+										<label for="table" class="control-label">Table Name <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
 										<input type="text" class="form-control" name="table" id="table" value="<?= (!empty($row['table']) ? htmlentities($row['table']) : null) ?>" placeholder="enter name">
 									</div>
-
 									<div class="input-multi">
 										<div class="form-group">
-											<label>Columns/s <small>(<span class="text-danger">All but a-z is stripped.</span>)</small></label>
+											<label>Columns/s <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
 											<div class="input-group">
 												<input type="text" name="column[]" class="form-control">
 												<span class="input-group-btn">
@@ -389,24 +456,17 @@ function get_machine_id() {
 										</div>
 									</div>
 									<div class="row modal-footer">
-										<button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
 										<button type="submit" class="btn btn-primary">Save</button>
 									</div>
 								</form>
 							</div>
-							
 							<?php $i=0; foreach ($tables as $table): ?>
 							<?php 
 								//query server
 								$result = $api->findAll($table);
 							?>
-						    <div class="tab-pane<?= (($i == 0) ? ' active' : null) ?>" id="tab-<?= $table ?>">
-						    	<h2>
-									<?= str_replace('_', ' ', ucfirst($table)) ?>
-									<a href="#ajax-modal" data-url="/?do=modal&action=create&table=<?= $table ?>" data-size="modal-md" class="ajax-model btn btn-sm btn-primary pull-right" role="button" data-toggle="modal"><i class="fa fa-pencil"></i> Create</a>
-								</h2>
-						    	<p class="api-info">These records are fetched from this endpoint <a href="/server.php">./server.php</a> using the <a href="http://php.net/manual/en/yar-client.call.php" target="_blank"><code>Yar_Client::__call ( string $method , array $parameters )</code></a></p>
-								
+							<div class="tab-pane<?= (($i == 0) ? ' active' : null) ?>" id="tab-<?= $table ?>">
+								<a href="#ajax-modal" data-url="/?do=modal&action=create&table=<?= $table ?>" data-size="modal-md" class="ajax-model btn btn-xs btn-link pull-right" role="button" data-toggle="modal"><i class="fa fa-plus text-success"></i> Add Row</a>
 								<?php if (empty($result[0])): ?>
 								<p class="api-info text-danger">No records were found in the <?= $table ?> table.</p>
 								<?php else: ?>
@@ -414,16 +474,16 @@ function get_machine_id() {
 									<thead>
 										<tr>
 											<?php foreach ($result[0] as $column => $value): ?>
-											<th><?= ucfirst($column) ?></th>
+											<th<?php if (in_array($column, ['id', 'added', 'updated'])): ?> class="col-xs-1"<?php endif ?>><?= ucfirst($column) ?> <?php if (!in_array($column, ['id', 'added', 'updated'])): ?><a href="?do=delete_column&table=<?= $table ?>&column=<?= $column ?>"><i class="fa fa-times text-danger"></i></a><?php endif ?></th>
 											<?php endforeach ?>
-											<th></th>
+											<th class="col-xs-1"></th>
 										</tr>
 									</thead>
 									<tbody>
 										<?php foreach ($result as $row): ?>
 										<tr>
 											<?php foreach ($result[0] as $column => $value): ?>
-											<td><?= $row[$column] ?></td>
+											<td<?php if (in_array($column, ['id', 'added', 'updated'])): ?> style="white-space: nowrap;"<?php endif ?>><?= $row[$column] ?></td>
 											<?php endforeach ?>
 											<td>
 												<a href="/?do=delete&table=<?= $table ?>&id=<?= (int) $row['id'] ?>">Delete</a>
@@ -433,14 +493,14 @@ function get_machine_id() {
 									</tbody>
 								</table>
 								<?php endif ?>
-						    </div>
-						  	<?php $i++; endforeach ?>
+							</div>
+							<?php $i++; endforeach ?>
 						</div>
 					</div>
 				</div>
+				<?php endif ?>
 			</div>
 		</div>
-
 		<div id="ajax-modal" class="modal fade">
 			<div class="modal-dialog">
 				<div class="modal-content">
@@ -454,13 +514,10 @@ function get_machine_id() {
 				</div>
 			</div>
 		</div>
-
 		<!-- jQuery -->
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
-
 		<!-- Bootstrap -->
 		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-
 		<script>
 		$(function() {
 			var rows = 0;
@@ -487,11 +544,11 @@ function get_machine_id() {
 			});
 		
 			jQuery(document).ready(function ($) {
-		        $('#tabs').tab();
-		    });
+				$('#tabs').tab();
+			});
 			/**
-		 	 * AJAX modal event handler, so we can handle more
-		 	 */
+			 * AJAX modal event handler, so we can handle more
+			 */
 			$(document).on("click", ".ajax-model", function (event) {
 				event.preventDefault();
 

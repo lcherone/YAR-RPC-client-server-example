@@ -2,8 +2,6 @@
 error_reporting(E_ALL);
 ini_set('display_errors', '1');
 
-//phpinfo();die;
-
 require('vendor/autoload.php');
 
 use RedBeanPHP\R;
@@ -12,7 +10,7 @@ class Database {
 
 	public function __construct()
 	{
-		R::setup('sqlite:/tmp/database1.db');
+		R::setup('sqlite:/tmp/database.db');
 		R::ext('xdispense', function($type) { 
 		  return R::getRedBean()->dispense($type); 
 		});
@@ -38,11 +36,15 @@ class Database {
 	}
 
 	/**
-     * Create bean
+     * Create
      *
-     * json $plink->create(string, array);
+     * @usage: 
+     *  $client = new yar_client("http://example.com/server.php");
+     *  $client->create('table', ['col' => 'value']);
      *
-     * @param array $params
+     * @param string $table
+     * @param array $data
+     * @return array
      */
 	public function create($table, $data = [])
 	{
@@ -53,17 +55,20 @@ class Database {
 		return R::exportAll($row);
 	}
 
-
 	/**
-     * Create bean
+     * Exec
      *
-     * json $plink->exec(string);
+     * @usage: 
+     *  $client = new yar_client("http://example.com/server.php");
+     *  $client->exec('DELETE FROM ...');
      *
-     * @param array $params
+     * @param string $query
+     * @return array
      */
-	public function exec($table, $query = [], $params = [])
+	public function exec($query = '')
 	{
-		return R::exec($table);
+		R::debug(true, 2);
+		return R::exec($query);
 	}
 
 	/**
@@ -83,7 +88,6 @@ class Database {
 		} else {
 			$result = R::findAll($table);
 		}
-
 		return R::exportAll($result);
 	}
 
@@ -206,7 +210,6 @@ class Database {
 		} else {
 			$result = R::findOne($table);
 		}
-
 		return R::exportAll($result);
 	}
 
@@ -293,7 +296,6 @@ class Database {
 		} else {
 			$result = R::count($table);
 		}
-
 		return $result;
 	}
 
@@ -324,9 +326,9 @@ class Database {
 	/**
      * Wipe bean
      *
-     * json $plink->wipe(string, int);
+     * json $plink->wipe(string);
      *
-     * @param array $params
+     * @param string $params
      */
 	public function wipe($table)
 	{

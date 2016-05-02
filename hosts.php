@@ -12,7 +12,7 @@ class Hosts {
 
 	public function __construct()
 	{
-		R::setup('sqlite:/tmp/hosts1.db');
+		R::setup('sqlite:/tmp/hosts.db');
 		
 		R::ext('xdispense', function($type) { 
 		  return R::getRedBean()->dispense($type); 

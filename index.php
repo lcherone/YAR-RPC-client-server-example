@@ -63,18 +63,7 @@ try {
 		);
 		exit(header('Location: ./index.php'));
 	}
-	
-	// if (empty($_SESSION['host'])) {
-	// 	//default host
-	// 	$_SESSION['host'] = [
-	// 		'machine_id' => get_machine_id(),
-	// 		'ip' => $_SERVER['SERVER_ADDR'],
-	// 		'hostname' => $_SERVER['HTTP_HOST'],
-	// 		'added' => date_create()->format('Y-m-d h:i:s'),
-	// 		'updated' => date_create()->format('Y-m-d h:i:s'),
-	// 	];
-	// }
-	
+
 	if (!empty($_SESSION['host'])) {
 		$api = new yar_client('http://'.$_SESSION['host']['hostname'].'/server.php');
 	
@@ -474,7 +463,7 @@ try {
 									<thead>
 										<tr>
 											<?php foreach ($result[0] as $column => $value): ?>
-											<th<?php if (in_array($column, ['id', 'added', 'updated'])): ?> class="col-xs-1"<?php endif ?>><?= ucfirst($column) ?> <?php if (!in_array($column, ['id', 'added', 'updated'])): ?><a href="?do=delete_column&table=<?= $table ?>&column=<?= $column ?>"><i class="fa fa-times text-danger"></i></a><?php endif ?></th>
+											<th<?php if (in_array($column, ['id', 'added', 'updated'])): ?> class="col-xs-1"<?php endif ?>><?= str_replace('_', ' ', ucfirst($column)) ?><?php if (!in_array($column, ['id', 'added', 'updated'])): ?> <a href="?do=delete_column&table=<?= $table ?>&column=<?= $column ?>"><i class="fa fa-times text-danger"></i></a><?php endif ?></th>
 											<?php endforeach ?>
 											<th class="col-xs-1"></th>
 										</tr>

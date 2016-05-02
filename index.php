@@ -1,11 +1,10 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
+error_reporting(0);
+ini_set('display_errors', '0');
 
 session_start();
 
 $table  = 'default';
-$vars = [];
 
 function get_machine_id() {
 	if (file_exists('./machine-id')) {
@@ -26,31 +25,17 @@ function get_machine_id() {
 	return $id;
 }
 
-/**
- * Attempts to get originating IP address of user,
- * Spoofable, but in future we may want to use load balancing.
- */
-function getIPAddress() {
-	if (!empty($_SERVER['HTTP_CLIENT_IP']) && filter_var($_SERVER['HTTP_CLIENT_IP'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-		$ip = $_SERVER['HTTP_CLIENT_IP'];
-	} elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && filter_var($_SERVER['HTTP_X_FORWARDED_FOR'], FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
-		$ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
-	} else {
-		$ip = $_SERVER['REMOTE_ADDR'];
-	}
-	return $ip;
-}
-
 try {
 	
 	$host = new yar_client("http://api.oss.tools/hosts.php");
-
+	
+	//find nodes
 	$nodes = $host->findAll('nodes');
+	
 	//find self
 	$peer = $host->findAll('nodes', 'machine_id = ?', [get_machine_id()]);
 	
-
-	// else add self to network
+	// add self to network
 	if (empty($peer)) {
 		$host->create(
 			'nodes', [
@@ -63,7 +48,7 @@ try {
 		);
 		exit(header('Location: ./index.php'));
 	}
-
+	
 	if (!empty($_SESSION['host'])) {
 		$api = new yar_client('http://'.$_SESSION['host']['hostname'].'/server.php');
 	
@@ -72,8 +57,8 @@ try {
 	}
 
 	if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+		
 		if (in_array('action', array_keys($_POST))) {
-			
 			$action = filter_input(INPUT_POST, 'action', FILTER_SANITIZE_STRING);
 			$id     = filter_input(INPUT_POST, 'id', FILTER_SANITIZE_NUMBER_INT);
 			$table  = filter_input(INPUT_POST, 'table', FILTER_SANITIZE_STRING);
@@ -124,7 +109,7 @@ try {
 			}
 		}
 	} else {
-		// modals
+		// ?do=*
 		if (in_array('do', array_keys($_GET))) {
 			switch (filter_input(INPUT_GET, 'do', FILTER_SANITIZE_STRING)) {
 				/**
@@ -258,10 +243,8 @@ try {
 
 	$error = '';
 } catch (Exception $e) {
-	$error = '<span style="color:red;font-weight:bold">Oops! '.$e->getMessage().'</span>';
+	$error = '<span class="text-danger">Oops! '.$e->getMessage().'</span>';
 }
-
-//print_r($_SESSION);
 
 //$host->wipe('nodes');
 //$api->wipe('contacts');
@@ -283,7 +266,7 @@ try {
 		<!-- Bootstrap Core CSS -->
 		<link href="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" rel="stylesheet">
 
-		<!-- CSS - Taken and tweeked from the extentions html output -->
+		<!-- CSS - Taken and tweeked from the YAR extentions html output -->
 		<style>
 			body {
 				background:#f8f8f8;
@@ -292,7 +275,7 @@ try {
 				margin:0
 			}
 
-			h1,h2,pre{
+			h1,h2,pre {
 				margin:0;
 				padding:0
 			}
@@ -421,9 +404,8 @@ try {
 						</ul>
 						<div class="tab-content">
 							<?php if (empty($tables)): ?>
-							<p>There are currently no data on this server.</p>
+							<p>There are no tables on this server.</p>
 							<?php endif ?>
-							
 							<div class="tab-pane" id="tab-new-table">
 								<form role="form" name="create-table-form" id="create-table-form" action="" method="POST" class="form-horizontal" style="margin:0px 20px">
 									<input type="hidden" name="action" value="create">
@@ -434,7 +416,7 @@ try {
 									</div>
 									<div class="input-multi">
 										<div class="form-group">
-											<label>Columns/s <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
+											<label>Column/s <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
 											<div class="input-group">
 												<input type="text" name="column[]" class="form-control">
 												<span class="input-group-btn">
@@ -450,10 +432,7 @@ try {
 								</form>
 							</div>
 							<?php $i=0; foreach ($tables as $table): ?>
-							<?php 
-								//query server
-								$result = $api->findAll($table);
-							?>
+							<?php $result = $api->findAll($table) ?>
 							<div class="tab-pane<?= (($i == 0) ? ' active' : null) ?>" id="tab-<?= $table ?>">
 								<a href="#ajax-modal" data-url="/?do=modal&action=create&table=<?= $table ?>" data-size="modal-md" class="ajax-model btn btn-xs btn-link pull-right" role="button" data-toggle="modal"><i class="fa fa-plus text-success"></i> Add Row</a>
 								<?php if (empty($result[0])): ?>
@@ -490,6 +469,7 @@ try {
 				<?php endif ?>
 			</div>
 		</div>
+		
 		<div id="ajax-modal" class="modal fade">
 			<div class="modal-dialog">
 				<div class="modal-content">
@@ -503,41 +483,36 @@ try {
 				</div>
 			</div>
 		</div>
+		
 		<!-- jQuery -->
 		<script src="//cdnjs.cloudflare.com/ajax/libs/jquery/2.2.3/jquery.min.js"></script>
 		<!-- Bootstrap -->
 		<script src="//maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js"></script>
-		<script>
-		$(function() {
-			var rows = 0;
-				/* add row */
-				$(".input-multi").on('click', '.add_row', function() {
-					var parent = $(this).closest('div.form-group');
-					var newrow =
-						'<div class="form-group">' +
-						'   <div class="input-group">' +
-						'       <input type="text" name="column[]" class="form-control">' +
-						'       <span class="input-group-btn">' +
-						'            <a href="javascript:void(0)" class="btn btn-danger delete_row" type="button"><i class="fa fa-times"></i></a>' +
-						'       </span>' +
-						'   </div>' +
-						'   <span class="help-block hidden"></span>' +
-						'</div>';
-					parent.after(newrow);
-					rows++;
-				});
-				$(".input-multi").on('click', '.delete_row', function() {
-					$(this).closest('div.form-group').remove();
-					rows--;
-				});
-			});
 		
-			jQuery(document).ready(function ($) {
-				$('#tabs').tab();
+		<script>
+		jQuery(document).ready(function ($) {
+			var rows = 0;
+			$(".input-multi").on('click', '.add_row', function() {
+				var parent = $(this).closest('div.form-group');
+				var newrow =
+					'<div class="form-group">' +
+					'   <div class="input-group">' +
+					'       <input type="text" name="column[]" class="form-control">' +
+					'       <span class="input-group-btn">' +
+					'            <a href="javascript:void(0)" class="btn btn-danger delete_row" type="button"><i class="fa fa-times"></i></a>' +
+					'       </span>' +
+					'   </div>' +
+					'   <span class="help-block hidden"></span>' +
+					'</div>';
+				parent.after(newrow);
+				rows++;
 			});
-			/**
-			 * AJAX modal event handler, so we can handle more
-			 */
+			
+			$(".input-multi").on('click', '.delete_row', function() {
+				$(this).closest('div.form-group').remove();
+				rows--;
+			});
+			
 			$(document).on("click", ".ajax-model", function (event) {
 				event.preventDefault();
 
@@ -568,6 +543,9 @@ try {
 					alert("Request failed: " + textStatus);
 				});
 			});
+			
+			$('#tabs').tab();
+		});
 		</script>
 	</body>
 </html>

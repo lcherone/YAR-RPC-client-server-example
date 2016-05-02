@@ -1,6 +1,10 @@
 <?php
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
+error_reporting(0);
+ini_set('display_errors', '0');
+
+if (!file_exists('vendor/autoload.php')) {
+	die('run composer install');
+}
 
 require('vendor/autoload.php');
 

@@ -130,7 +130,7 @@ try {
 						<div class="modal-content">
 							<div class="modal-header">
 								<button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-								<h4 class="modal-title"><?= (!empty($row['id']) ? 'Update' : 'Create') ?> <?= $table ?> entry</h4>
+								<h4 class="modal-title"><?= (!empty($row['id']) ? 'Update' : 'Create') ?> <?= str_replace('_', ' ', strtolower($table)) ?> row</h4>
 							</div>
 							<div class="modal-body clearfix">
 								<div class="col-xs-12">
@@ -368,9 +368,12 @@ try {
 									<td><?= htmlentities($row['updated']) ?></td>
 									<td>
 										<div class="btn-group btn-group-xs">
-											<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>" class="btn btn-danger">Delete</a>
-											<a href="/?do=connect&id=<?= (int) $row['id'] ?>" class="btn btn-success">Connect</a>
-											<a href="/?do=disconnect&id=<?= (int) $row['id'] ?>" class="btn btn-warning">Disconnect</a>
+											<?php if (!empty($_SESSION['host']['machine_id']) && $_SESSION['host']['id'] == $row['id']): ?>
+											<a href="/?do=disconnect&id=<?= (int) $row['id'] ?>" class="btn btn-warning"><i class="fa fa-sign-out"></i> Disconnect</a>
+											<?php else: ?>
+											<a href="/?do=connect&id=<?= (int) $row['id'] ?>" class="btn btn-success"><i class="fa fa-sign-in"></i> Connect</a>
+											<?php endif ?>
+											<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>" class="btn btn-danger"><i class="fa fa-times"></i> Delete</a>
 										</div>
 									</td>
 								</tr>
@@ -411,14 +414,14 @@ try {
 									<input type="hidden" name="action" value="create">
 									<input type="hidden" name="table" value="<?= $table ?>">
 									<div class="form-group">
-										<label for="table" class="control-label">Table Name <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
-										<input type="text" class="form-control" name="table" id="table" value="<?= (!empty($row['table']) ? htmlentities($row['table']) : null) ?>" placeholder="enter name">
+										<label for="table" class="control-label">Table <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
+										<input type="text" class="form-control" name="table" id="table" value="<?= (!empty($row['table']) ? htmlentities($row['table']) : null) ?>" placeholder="Enter name of new table">
 									</div>
 									<div class="input-multi">
 										<div class="form-group">
 											<label>Column/s <small>(<span class="text-danger">All but a-z and _ is stripped.</span>)</small></label>
 											<div class="input-group">
-												<input type="text" name="column[]" class="form-control">
+												<input type="text" name="column[]" class="form-control" placeholder="Enter name of new column">
 												<span class="input-group-btn">
 													<a href="javascript:void(0)" class="btn btn-success add_row" type="button"><i class="fa fa-plus"></i></a>
 												</span>
@@ -454,7 +457,10 @@ try {
 											<td<?php if (in_array($column, ['id', 'added', 'updated'])): ?> style="white-space: nowrap;"<?php endif ?>><?= $row[$column] ?></td>
 											<?php endforeach ?>
 											<td>
-												<a href="/?do=delete&table=<?= $table ?>&id=<?= (int) $row['id'] ?>">Delete</a>
+												<div class="btn-group" style="display:flex">
+												<a href="#ajax-modal" data-url="/?do=modal&action=update&table=<?= $table ?>" data-size="modal-md" class="ajax-model btn btn-xs btn-primary" role="button" data-toggle="modal"><i class="fa fa-pencil"></i> Edit</a>
+												<a href="/?do=delete&table=<?= $table ?>&id=<?= (int) $row['id'] ?>"  class="btn btn-xs btn-danger"><i class="fa fa-times"></i> Delete</a>
+												</div>
 											</td>
 										</tr>
 										<?php endforeach ?>

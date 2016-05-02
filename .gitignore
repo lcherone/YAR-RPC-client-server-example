@@ -1,3 +1,4 @@
 vendor/
 composer.lock
 machine-id
+adminer.php

@@ -291,7 +291,6 @@ try {
 
 			h2 {
 				border-bottom:1px solid #ddd;
-				cursor:pointer;
 				font:normal 18px/20px serif;
 				margin:20px 10px 0;
 				padding:5px 0 8px
@@ -340,74 +339,72 @@ try {
 				<div class="col-xs-12">
 					<?= $error ?>
 					<h2>
-						Servers List
+						Servers List <small class="text-muted">(instances of this script)</small>
 					</h2>
-					<p class="api-info">
-						Servers are instances of this script, each with there own database. To add a server or for more information about this sunday project <a href="https://bitbucket.org/lcherone/yar-rpc-client-server-example" target="_blank">click here</a>.
-					</p>
 					<div class="col-md-12">
-						<table class="table table-striped table-hover">
-							<thead>
-								<tr>
-									<th>Machine ID</th>
-									<th>IP Address</th>
-									<th>Hostname</th>
-									<th>Added</th>
-									<th>Updated</th>
-									<th></th>
-								</tr>
-							</thead>
-							<tbody>
-								<?php foreach ($nodes as $row): ?>
-								<tr>
-									<!--<td><a href="#ajax-modal" data-url="/?do=modal&action=update&table=peers&id=<?= (int) $row['id'] ?>" data-size="modal-md" class="ajax-model" data-toggle="modal"><?= htmlentities($row['machine_id']) ?></a></td>-->
-									<td><?= htmlentities($row['machine_id']) ?></td>
-									<td><?= htmlentities($row['ip']) ?></td>
-									<td><?= htmlentities($row['hostname']) ?></td>
-									<td><?= htmlentities($row['added']) ?></td>
-									<td><?= htmlentities($row['updated']) ?></td>
-									<td>
-										<div class="btn-group btn-group-xs">
-											<?php if (!empty($_SESSION['host']['machine_id']) && $_SESSION['host']['id'] == $row['id']): ?>
-											<a href="/?do=disconnect&id=<?= (int) $row['id'] ?>" class="btn btn-warning"><i class="fa fa-sign-out"></i> Disconnect</a>
-											<?php else: ?>
-											<a href="/?do=connect&id=<?= (int) $row['id'] ?>" class="btn btn-success"><i class="fa fa-sign-in"></i> Connect</a>
-											<?php endif ?>
-											<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>" class="btn btn-danger"><i class="fa fa-times"></i> Delete</a>
-										</div>
-									</td>
-								</tr>
-								<?php endforeach ?>
-							</tbody>
-						</table>
+						<div class="tab-content">
+							<table class="table table-striped table-hover">
+								<thead>
+									<tr>
+										<th>Machine ID</th>
+										<th>IP Address</th>
+										<th>Hostname</th>
+										<th>Added</th>
+										<th>Updated</th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($nodes as $row): ?>
+									<tr>
+										<!--<td><a href="#ajax-modal" data-url="/?do=modal&action=update&table=peers&id=<?= (int) $row['id'] ?>" data-size="modal-md" class="ajax-model" data-toggle="modal"><?= htmlentities($row['machine_id']) ?></a></td>-->
+										<td><?= htmlentities($row['machine_id']) ?></td>
+										<td><?= htmlentities($row['ip']) ?></td>
+										<td><?= htmlentities($row['hostname']) ?></td>
+										<td><?= htmlentities($row['added']) ?></td>
+										<td><?= htmlentities($row['updated']) ?></td>
+										<td>
+											<div class="btn-group btn-group-xs">
+												<?php if (!empty($_SESSION['host']['machine_id']) && $_SESSION['host']['id'] == $row['id']): ?>
+												<a href="/?do=disconnect&id=<?= (int) $row['id'] ?>" class="btn btn-warning"><i class="fa fa-sign-out"></i> Disconnect</a>
+												<?php else: ?>
+												<a href="/?do=connect&id=<?= (int) $row['id'] ?>" class="btn btn-success"><i class="fa fa-sign-in"></i> Connect</a>
+												<?php endif ?>
+												<a href="/?do=delete_server&id=<?= (int) $row['id'] ?>" class="btn btn-danger"><i class="fa fa-times"></i> Delete</a>
+											</div>
+										</td>
+									</tr>
+									<?php endforeach ?>
+								</tbody>
+							</table>
+						</div>
 					</div>
 				</div>			
 				<?php if (!empty($_SESSION['host'])): ?>
 				<div class="col-xs-12">
 					<?= $error ?>
 					<h2>
-						Tables
+						Tables on <?= $_SESSION['host']['hostname'] ?>
 					</h2>
 					<p class="api-info">
 						The following data is stored and retrieved from 
-						<code><a href="http://<?= $_SESSION['host']['hostname'] ?>/server.php"><?= $_SESSION['host']['hostname'] ?></a> (<?= $_SESSION['host']['ip'] ?>)</code> through 
-						<code><a href="http://<?= $peer[0]['hostname'] ?>/server.php"><?= $peer[0]['hostname'] ?></a> (<?= $peer[0]['ip'] ?>)</code> 
+						<code><a href="http://<?= $_SESSION['host']['hostname'] ?>/server.php"><?= $_SESSION['host']['hostname'] ?></a> (<?= $_SESSION['host']['ip'] ?>)</code>
 						using the RPC <a href="http://php.net/manual/en/class.yar-client.php" target="_blank"><code>Yar_Client</code></a>.
 					</p>
 					<div class="col-xs-12">
-						<ul class="nav nav-tabs" id="myTab">
+						<ul class="nav nav-tabs">
 							<?php $i=0; foreach ($tables as $table): ?>
 							<li class="<?= (($i == 0) ? ' active' : null) ?>">
-								<a data-target="#tab-<?= $table ?>" data-toggle="tab">
-									<?= str_replace('_', ' ', ucfirst($table)) ?> <span onclick="window.location.href = '?do=delete_table&table=<?= $table ?>'" style="cursor:pointer"><i class="fa fa-times text-danger"></i></a></span>
+								<a data-target="#tab-<?= $table ?>" data-toggle="tab" style="cursor:pointer">
+									<?= str_replace('_', ' ', ucfirst($table)) ?> <span onclick="window.location.href = '?do=delete_table&table=<?= $table ?>'"><i class="fa fa-times text-danger"></i></a></span>
 								</a>
 							</li>
 							<?php $i++; endforeach ?>
-							<li class="pull-right"><a data-target="#tab-new-table" data-toggle="tab"><i class="fa fa-plus text-success"></i> Add Table</a></li>
+							<li class="pull-right"><a data-target="#tab-new-table" data-toggle="tab" style="cursor:pointer"><i class="fa fa-plus text-success"></i> Add Table</a></li>
 						</ul>
 						<div class="tab-content">
 							<?php if (empty($tables)): ?>
-							<p>There are no tables on this server.</p>
+							<p class="text-muted">There is nothing to show, <a data-target="#tab-new-table" data-toggle="tab" style="cursor:pointer">click here</a> to add a table.</p>
 							<?php endif ?>
 							<div class="tab-pane" id="tab-new-table">
 								<form role="form" name="create-table-form" id="create-table-form" action="" method="POST" class="form-horizontal" style="margin:0px 20px">

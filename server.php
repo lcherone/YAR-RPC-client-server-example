@@ -15,6 +15,8 @@ class Database {
 	public function __construct()
 	{
 		R::setup('sqlite:/tmp/database.db');
+		//R::setup('mysql:host=127.0.0.1;dbname=test', 'root', 'morP10n1');
+
 		R::ext('xdispense', function($type) { 
 		  return R::getRedBean()->dispense($type); 
 		});

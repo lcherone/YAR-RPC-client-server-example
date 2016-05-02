@@ -30,7 +30,3 @@ Restart apache...
 ![3.png](https://bitbucket.org/repo/AB97Kz/images/1043424688-3.png)
 ![4.png](https://bitbucket.org/repo/AB97Kz/images/1533580200-4.png)
 ![5.png](https://bitbucket.org/repo/AB97Kz/images/689375255-5.png)
-
-**IMO**
-
-[Plinker](https://bitbucket.org/plinker/example) is better, way more secure, namespaced and code accessible, 100% PHP so no extension required and does the same thing and more.

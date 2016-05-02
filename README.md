@@ -8,7 +8,7 @@ It was originally just an experiment with the YAR PECL extension, to see what ca
 
 **Unlike Plinker, there is absolutely no security implemented into the extension, so this is only useful for non sensitive data.**
 
-**Uses** 
+**Uses:** 
 
  - [Yet Another RPC Framework](http://php.net/manual/en/book.yar.php) (PECL extension)
  - [RedBeanPHP](http://www.redbeanphp.com) for endpoint database operations.
@@ -24,7 +24,7 @@ Then create a new extension apache config file for `yar.so`
 
 Restart apache...
 
-**Screenshots**
+**Screenshots:**
 
 ![1.png](https://bitbucket.org/repo/AB97Kz/images/420884455-1.png)
 ![2.png](https://bitbucket.org/repo/AB97Kz/images/404006128-2.png)

@@ -4,9 +4,9 @@ PHP RPC Client/Server Example
 
 **What does it do?**
 
-It was originally just an experiment with the YAR PECL extension, to see what can do an how it compares with my own RPC project [Plinker](https://bitbucket.org/plinker/example). Having worked on it for a few hours it slowly mutated into a remote server database CRUD, with the ability to manage tables, columns and rows. By default a new `/tmp/database.db` sqlite file will be used, to manage other tables you simply need only change the `R::setup('...')` dsn in the `server.php` file.
+It was originally just an experiment with the YAR PECL extension, to see what can do an how it compares with my own RPC project [Plinker](https://github.com/plinker-rpc/core). Having worked on it for a few hours it slowly mutated into a remote server database CRUD, with the ability to manage tables, columns and rows. By default a new `/tmp/database.db` sqlite file will be used, to manage other tables you simply need only change the `R::setup('...')` dsn in the `server.php` file.
 
-**Unlike Plinker, there is absolutely no security implemented into the extension, so this is only useful for non sensitive data.**
+**Unlike [Plinker](https://github.com/plinker-rpc/core), there is absolutely no security implemented into the extension, so this is only useful for non sensitive data.**
 
 **Uses:** 
 
